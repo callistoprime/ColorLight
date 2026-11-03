@@ -17,6 +17,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.decoration.ItemFrame;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.vehicle.minecart.AbstractMinecart;
@@ -78,6 +79,18 @@ public final class ColorLightEntityLightTicker {
         white.g = 255;
         white.b = 255;
         return white;
+    }
+
+    private static final BlockSettings PLAYER_ENTITY_GLOW = playerSettings();
+
+    private static BlockSettings playerSettings() {
+        BlockSettings glow = new BlockSettings(Identifier.fromNamespaceAndPath("colorlight", "player_entity"), 15, true);
+        // HACK: set player glow to #f39a5e, the lantern glow color in Vibrant Visuals as of 20261103 --callisto
+        // TODO: dynamically calculate this from playerEntity.trinkets weighting each equipped trinket by luminance vs. brightest
+        glow.r = 243;
+        glow.g = 154;
+        glow.b = 94;
+        return glow;
     }
 
     /**
@@ -317,6 +330,7 @@ public final class ColorLightEntityLightTicker {
         }
     }
 
+    // private static HashMap<String, Void> lumedEntities = new HashMap<>();
     private static Glow findGlowingSource(Entity entity) {
         Glow known = findKnownGlow(entity);
         if (known != null)
@@ -325,7 +339,21 @@ public final class ColorLightEntityLightTicker {
         // ColorLight has no colour for this entity. If LambDynamicLights still lights it (a belt lantern, a glow
         // squid, a burning mob ...), give it a plain white light of the same brightness instead of no light at all.
         int luminance = LdlEntityLuminance.of(entity);
-        return luminance > 0 ? new Glow(UNKNOWN_ENTITY_WHITE, ItemStack.EMPTY, luminance) : null;
+        if (luminance > 0) {
+            // TODO: see above HACK/TODO about rgb color blending someday
+            BlockSettings entityGlow = entity instanceof Player player ? PLAYER_ENTITY_GLOW : UNKNOWN_ENTITY_WHITE;
+            /*
+            String entityName = entity.getName().getString();
+            if (entityName == null)
+                entityName = "__unnamed__";
+            if (!lumedEntities.containsKey(entityName)) {
+                lumedEntities.put(entityName, null);
+                ColorLightClient.LOGGER.info("[ColorLight] LDL uncolored glow: {}", entityName);
+            }
+            */
+            return new Glow(entityGlow, ItemStack.EMPTY, luminance);
+        }
+        return null;
     }
 
     private static Glow findKnownGlow(Entity entity) {
